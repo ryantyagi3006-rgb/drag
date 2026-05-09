@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Resistance Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e17;
+    --panel: #111827;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #3b82f6;
+    --sphere: #60a5fa;
+    --disc: #fb923c;
+    --stream: #4ade80;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    min-height: 0;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 12px; }
+
+  .control-row { display: flex; flex-direction: column; gap: 6px; }
+
+  .control-label {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .control-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .checkbox-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .checkbox-row input[type=checkbox] {
+    width: 14px; height: 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* Object cards */
+  .obj-cards { display: flex; flex-direction: column; gap: 8px; }
+
+  .obj-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    transition: border-color 0.2s;
+  }
+  .obj-card:hover { border-color: rgba(255,255,255,0.15); }
+
+  .obj-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .obj-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  .obj-name {
+    font-size: 13px; font-weight: 500; color: var(--text); flex: 1;
+  }
+
+  .obj-cd {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+  }
+
+  .obj-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+
+  .obj-stat {
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  .obj-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  .obj-stat-val { font-family: var(--mono); font-size: 13px; color: var(--text); }
+
+  /* Buttons */
+  .btn-group { display: flex; gap: 8px; }
+
+  .btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: rgba(255,255,255,0.05); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn.primary:hover { background: #2563eb; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* CANVAS AREA */
+  .canvas-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  canvas#sim {
+    flex: 1;
+    width: 100%;
+    display: block;
+  }
+
+  .formula-bar {
+    border-top: 1px solid var(--border);
+    padding: 12px 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .formula {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .formula-parts {
+    display: flex; gap: 1.5rem; flex-wrap: wrap;
+  }
+
+  .formula-part { font-size: 11px; color: var(--muted); }
+  .formula-part strong { color: var(--text); font-weight: 400; }
+
+  /* Phase label on canvas */
+  #phaseLabel {
+    position: absolute;
+    top: 16px; right: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    canvas#sim { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">Fd</div>
+    <div>
+      <h1>Air Resistance Simulator</h1>
+      <div class="subtitle">Drag force &amp; terminal velocity — same mass, different shapes</div>
+    </div>
+  </div>
+  <div class="badge">PHYSICS SIM v1.0</div>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Environment</div>
+      <div class="control-group">
+        <div class="control-row">
+          <div class="control-label">Air density (ρ) <span class="control-val" id="rhoVal">1.225 kg/m³</span></div>
+          <input type="range" id="rhoSlider" min="0.1" max="2.5" step="0.01" value="1.225">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Gravity (g) <span class="control-val" id="gVal">9.8 m/s²</span></div>
+          <input type="range" id="gSlider" min="1" max="25" step="0.1" value="9.8">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Drop height <span class="control-val" id="hVal">60 m</span></div>
+          <input type="range" id="hSlider" min="20" max="200" step="5" value="60">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Object mass <span class="control-val" id="mVal">1.0 kg</span></div>
+          <input type="range" id="mSlider" min="0.1" max="10" step="0.1" value="1">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Cross-section area <span class="control-val" id="aVal">0.05 m²</span></div>
+          <input type="range" id="aSlider" min="0.01" max="0.5" step="0.01" value="0.05">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Display</div>
+      <div class="control-group">
+        <label class="checkbox-row"><input type="checkbox" id="showTrail" checked> Trails</label>
+        <label class="checkbox-row"><input type="checkbox" id="showDrag" checked> Drag arrows</label>
+        <label class="checkbox-row"><input type="checkbox" id="showGrav" checked> Gravity arrows</label>
+        <label class="checkbox-row"><input type="checkbox" id="showGrid" checked> Grid</label>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Objects</div>
+      <div class="obj-cards">
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-dot" style="background:#60a5fa"></div>
+            <div class="obj-name">Sphere</div>
+            <div class="obj-cd">Cd = 0.47</div>
+          </div>
+          <div class="obj-stats">
+            <div class="obj-stat"><div class="obj-stat-label">velocity</div><div class="obj-stat-val" id="s0v">0.0 m/s</div></div>
+            <div class="obj-stat"><div class="obj-stat-label">terminal</div><div class="obj-stat-val" id="s0t">— m/s</div></div>
+          </div>
+        </div>
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-dot" style="background:#fb923c"></div>
+            <div class="obj-name">Flat disc</div>
+            <div class="obj-cd">Cd = 1.17</div>
+          </div>
+          <div class="obj-stats">
+            <div class="obj-stat"><div class="obj-stat-label">velocity</div><div class="obj-stat-val" id="s1v">0.0 m/s</div></div>
+            <div class="obj-stat"><div class="obj-stat-label">terminal</div><div class="obj-stat-val" id="s1t">— m/s</div></div>
+          </div>
+        </div>
+        <div class="obj-card">
+          <div class="obj-header">
+            <div class="obj-dot" style="background:#4ade80"></div>
+            <div class="obj-name">Streamlined</div>
+            <div class="obj-cd">Cd = 0.04</div>
+          </div>
+          <div class="obj-stats">
+            <div class="obj-stat"><div class="obj-stat-label">velocity</div><div class="obj-stat-val" id="s2v">0.0 m/s</div></div>
+            <div class="obj-stat"><div class="obj-stat-label">terminal</div><div class="obj-stat-val" id="s2t">— m/s</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn primary" id="dropBtn" onclick="startDrop()">DROP ↓</button>
+      <button class="btn" onclick="doReset()">RESET</button>
+    </div>
+
+  </aside>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <canvas id="sim"></canvas>
+    <div id="phaseLabel">READY</div>
+    <div class="formula-bar">
+      <div class="formula">F = ½ρv²CdA</div>
+      <div class="formula-parts">
+        <div class="formula-part"><strong>ρ</strong> air density</div>
+        <div class="formula-part"><strong>v</strong> velocity</div>
+        <div class="formula-part"><strong>Cd</strong> drag coefficient</div>
+        <div class="formula-part"><strong>A</strong> cross-section</div>
+        <div class="formula-part"><strong>v_t</strong> = √(2mg/ρCdA)</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
+
+const OBJS = [
+  { name:'Sphere',      Cd:0.47, color:'#60a5fa', glow:'rgba(96,165,250,0.15)'  },
+  { name:'Flat disc',   Cd:1.17, color:'#fb923c', glow:'rgba(251,146,60,0.15)'  },
+  { name:'Streamlined', Cd:0.04, color:'#4ade80', glow:'rgba(74,222,128,0.15)'  },
+];
+
+let running=false, raf=null, lastT=null, state=[], time=0;
+const GROUND_H = 40;
+
+function param(id) { return parseFloat(document.getElementById(id).value); }
+function rho() { return param('rhoSlider'); }
+function gravity() { return param('gSlider'); }
+function dropHeight() { return param('hSlider'); }
+function mass() { return param('mSlider'); }
+function area() { return param('aSlider'); }
+function termV(Cd) {
+  const tv = Math.sqrt((2*mass()*gravity())/(rho()*Cd*area()));
+  return isFinite(tv) ? tv : 0;
+}
+
+function resize() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight - 57; // minus formula bar
+}
+
+function groundPx() { return canvas.height - GROUND_H; }
+function pxPerM()   { return (groundPx() - 50) / dropHeight(); }
+
+function colX(i) {
+  const w = canvas.width;
+  return [w*0.28, w*0.5, w*0.72][i];
+}
+
+function initState() {
+  state = OBJS.map((o,i) => ({
+    ...o, y:0, vy:0, x:colX(i), landed:false, trail:[], tv:termV(o.Cd)
+  }));
+  updateTerminalDisplay();
+}
+
+function updateTerminalDisplay() {
+  OBJS.forEach((o,i) => {
+    document.getElementById('s'+i+'t').textContent = termV(o.Cd).toFixed(1)+' m/s';
+  });
+}
+
+function doReset() {
+  running=false; time=0;
+  if(raf) cancelAnimationFrame(raf); raf=null; lastT=null;
+  initState();
+  draw();
+  ['s0v','s1v','s2v'].forEach(id => document.getElementById(id).textContent='0.0 m/s');
+  document.getElementById('dropBtn').textContent='DROP ↓';
+  document.getElementById('dropBtn').disabled=false;
+  document.getElementById('phaseLabel').textContent='READY';
+}
+
+function startDrop() {
+  if(running) return;
+  running=true; time=0; lastT=null;
+  document.getElementById('dropBtn').textContent='FALLING...';
+  document.getElementById('dropBtn').disabled=true;
+  document.getElementById('phaseLabel').textContent='SIMULATING';
+  raf=requestAnimationFrame(loop);
+}
+
+function loop(ts) {
+  if(!running) return;
+  if(lastT===null){ lastT=ts; raf=requestAnimationFrame(loop); return; }
+  const dt = Math.min((ts-lastT)/1000, 0.033);
+  lastT=ts; time+=dt;
+
+  const gp=groundPx(), ppm=pxPerM();
+  let allDone=true;
+
+  state.forEach((o,i) => {
+    if(o.landed) return;
+    allDone=false;
+    const drag = 0.5*rho()*o.vy*o.vy*o.Cd*area();
+    const acc  = gravity() - drag/mass();
+    o.vy = Math.max(0, o.vy + acc*dt);
+    o.y  += o.vy*dt;
+
+    const yPx = 50 + o.y*ppm;
+    if(yPx >= gp-16) { o.landed=true; }
+
+    o.trail.push({ x:o.x, y:Math.min(yPx, gp-16) });
+    if(o.trail.length>150) o.trail.shift();
+
+    document.getElementById('s'+i+'v').textContent = o.vy.toFixed(1)+' m/s';
+  });
+
+  draw();
+
+  if(allDone) {
+    running=false;
+    document.getElementById('dropBtn').textContent='DROP ↓';
+    document.getElementById('dropBtn').disabled=false;
+    document.getElementById('phaseLabel').textContent='LANDED';
+    return;
+  }
+  raf=requestAnimationFrame(loop);
+}
+
+// ---- DRAWING ----
+function drawGrid() {
+  if(!document.getElementById('showGrid').checked) return;
+  const gp=groundPx(), ppm=pxPerM(), dh=dropHeight();
+  ctx.strokeStyle='rgba(59,130,246,0.06)';
+  ctx.lineWidth=1;
+  // Horizontal lines every 10m
+  for(let m=0; m<=dh; m+=10) {
+    const y=50+m*ppm;
+    if(y>gp) break;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+    ctx.fillStyle='rgba(107,114,128,0.5)';
+    ctx.font='10px Space Mono, monospace';
+    ctx.fillText(m+'m', 6, y-3);
+  }
+  // Vertical separator lines
+  ctx.strokeStyle='rgba(255,255,255,0.04)';
+  state.forEach(o => {
+    ctx.beginPath(); ctx.moveTo(o.x,0); ctx.lineTo(o.x,gp); ctx.stroke();
+  });
+}
+
+function drawGround() {
+  const gp=groundPx(), w=canvas.width;
+  ctx.fillStyle='rgba(59,130,246,0.05)';
+  ctx.fillRect(0,gp,w,GROUND_H);
+  ctx.strokeStyle='rgba(59,130,246,0.4)';
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,gp); ctx.lineTo(w,gp); ctx.stroke();
+  ctx.fillStyle='rgba(107,114,128,0.6)';
+  ctx.font='11px Space Mono, monospace';
+  ctx.textAlign='center';
+  ctx.fillText('GROUND  (y = 0)', w/2, gp+26);
+}
+
+function drawTrail(o) {
+  if(!document.getElementById('showTrail').checked || o.trail.length<2) return;
+  const n=o.trail.length;
+  for(let i=1;i<n;i++){
+    const alpha=(i/n)*0.4;
+    ctx.strokeStyle=o.color+Math.round(alpha*255).toString(16).padStart(2,'0');
+    ctx.lineWidth=6*(i/n);
+    ctx.beginPath();
+    ctx.moveTo(o.trail[i-1].x,o.trail[i-1].y);
+    ctx.lineTo(o.trail[i].x,o.trail[i].y);
+    ctx.stroke();
+  }
+}
+
+function drawArrow(ctx, x, y1, y2, color, label) {
+  ctx.strokeStyle=color;
+  ctx.fillStyle=color;
+  ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x,y1); ctx.lineTo(x,y2); ctx.stroke();
+  const dir = y2>y1 ? 1 : -1;
+  ctx.beginPath();
+  ctx.moveTo(x-5,y2-dir*8); ctx.lineTo(x,y2); ctx.lineTo(x+5,y2-dir*8);
+  ctx.fill();
+  ctx.font='10px Space Mono, monospace';
+  ctx.textAlign='center';
+  ctx.fillText(label, x, y2+dir*14);
+}
+
+function drawShape(o, yPx) {
+  const x=o.x, r=15;
+  ctx.shadowColor=o.color;
+  ctx.shadowBlur=20;
+  ctx.fillStyle=o.color;
+
+  if(o.name==='Sphere'){
+    ctx.beginPath(); ctx.arc(x,yPx,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    // shine
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.arc(x-4,yPx-4,5,0,Math.PI*2); ctx.fill();
+  } else if(o.name==='Flat disc'){
+    ctx.beginPath(); ctx.ellipse(x,yPx,r,5,0,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.beginPath(); ctx.ellipse(x-3,yPx-1,r*0.6,2,0,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x-r*1.8,yPx);
+    ctx.quadraticCurveTo(x,yPx-9,x+r*1.8,yPx);
+    ctx.quadraticCurveTo(x,yPx+9,x-r*1.8,yPx);
+    ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  ctx.shadowBlur=0;
+
+  // label below shape
+  ctx.fillStyle=o.color+'cc';
+  ctx.font='11px Space Mono, monospace';
+  ctx.textAlign='center';
+  ctx.fillText(o.name, x, yPx+28);
+  ctx.fillStyle=o.color+'66';
+  ctx.fillText('Cd='+o.Cd, x, yPx+40);
+}
+
+function drawForceArrows(o, yPx) {
+  if(o.landed || o.vy<0.5) return;
+  const showDrag=document.getElementById('showDrag').checked;
+  const showGrav=document.getElementById('showGrav').checked;
+  const dragF = 0.5*rho()*o.vy*o.vy*o.Cd*area();
+  const gravF = mass()*gravity();
+  const scale = 2.5;
+
+  if(showDrag){
+    const len=Math.min(dragF/gravF*60, 70);
+    drawArrow(ctx, o.x, yPx-18, yPx-18-len, o.color+'cc', 'drag');
+  }
+  if(showGrav){
+    const len=Math.min(40,40);
+    drawArrow(ctx, o.x+22, yPx-8, yPx-8+len, 'rgba(248,113,113,0.8)', 'g');
+  }
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Dark background
+  ctx.fillStyle='#0a0e17';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  drawGrid();
+  drawGround();
+
+  state.forEach(o => {
+    drawTrail(o);
+    const yPx = o.landed ? groundPx()-16 : Math.min(50+o.y*pxPerM(), groundPx()-16);
+    drawForceArrows(o, yPx);
+    drawShape(o, yPx);
+  });
+
+  // Time counter
+  if(running || time>0){
+    ctx.fillStyle='rgba(107,114,128,0.7)';
+    ctx.font='12px Space Mono, monospace';
+    ctx.textAlign='left';
+    ctx.fillText('t = '+time.toFixed(2)+' s', 10, 20);
+  }
+}
+
+// Slider listeners
+['rhoSlider','gSlider','hSlider','mSlider','aSlider'].forEach(id => {
+  const el=document.getElementById(id);
+  const labels={rhoSlider:'rhoVal',gSlider:'gVal',hSlider:'hVal',mSlider:'mVal',aSlider:'aVal'};
+  const units={rhoSlider:' kg/m³',gSlider:' m/s²',hSlider:' m',mSlider:' kg',aSlider:' m²'};
+  el.addEventListener('input', ()=>{
+    const v=parseFloat(el.value);
+    document.getElementById(labels[id]).textContent=v.toFixed(id==='aSlider'?2:1)+units[id];
+    if(!running){ doReset(); }
+    updateTerminalDisplay();
+  });
+});
+
+window.addEventListener('resize', ()=>{ resize(); if(!running){ initState(); draw(); } });
+
+setTimeout(()=>{ resize(); initState(); draw(); }, 80);
+</script>
+</body>
+</html>
